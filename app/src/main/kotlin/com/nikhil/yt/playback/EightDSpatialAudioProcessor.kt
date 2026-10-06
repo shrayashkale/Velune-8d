@@ -8,9 +8,9 @@ package com.nikhil.yt.playback
 
 import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import androidx.media3.common.audio.BaseAudioProcessor
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
@@ -80,14 +80,14 @@ class EightDSpatialAudioProcessor : BaseAudioProcessor() {
     private var delayLineR = FloatArray(0)
     private var delayPos = 0
 
-    override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
+    override fun onConfigure(inputAudioFormat: AudioFormat): AudioFormat {
         val supportedEncoding =
             inputAudioFormat.encoding == C.ENCODING_PCM_16BIT ||
                 inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
         val supportedChannels = inputAudioFormat.channelCount == 1 || inputAudioFormat.channelCount == 2
         if (!supportedEncoding || !supportedChannels || inputAudioFormat.sampleRate <= 0) {
             // Unsupported stream: stay inactive so ExoPlayer routes audio around us.
-            return AudioProcessor.AudioFormat.NOT_SET
+            return AudioFormat.NOT_SET
         }
         sampleRateHz = inputAudioFormat.sampleRate
         inputChannels = inputAudioFormat.channelCount
@@ -101,14 +101,11 @@ class EightDSpatialAudioProcessor : BaseAudioProcessor() {
         tiltStateR = 0f
 
         // Mono is upmixed so the orbit still works; stereo passes through.
-        return AudioProcessor.AudioFormat(
-            sampleRate = inputAudioFormat.sampleRate,
-            channelCount = 2,
-            encoding = inputAudioFormat.encoding,
-        )
+        // NOTE: positional args - the Java constructor has no Kotlin metadata.
+        return AudioFormat(inputAudioFormat.sampleRate, 2, inputAudioFormat.encoding)
     }
 
-    override fun onFlush() {
+    override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
         delayLineL.fill(0f)
         delayLineR.fill(0f)
         delayPos = 0
@@ -118,7 +115,7 @@ class EightDSpatialAudioProcessor : BaseAudioProcessor() {
     }
 
     override fun onReset() {
-        onFlush()
+        onFlush(AudioProcessor.StreamMetadata.DEFAULT)
         angleRad = 0.0
         wet = 0f
         sGainL = 1f
@@ -132,7 +129,10 @@ class EightDSpatialAudioProcessor : BaseAudioProcessor() {
         bytesPerSample = 0
     }
 
-    override fun onQueueInput(inputBuffer: ByteBuffer) {
+    override fun queueInput(inputBuffer: ByteBuffer) {
+        if (!inputBuffer.hasRemaining() || bytesPerSample == 0) {
+            return
+        }
         val p = params // single volatile read for this buffer
         val position = inputBuffer.position()
         val limit = inputBuffer.limit()
@@ -289,7 +289,7 @@ class EightDSpatialAudioProcessor : BaseAudioProcessor() {
         val behind = max(0f, -cos(theta).toFloat())
 
         // Delay the ear farther from the virtual source (<= 0.65 ms).
-        val maxDelaySamples = (MAX_ITD_SECONDS * sampleRate)
+        val maxDelaySamples = (MAX_ITD_SECONDS * sampleRate).toFloat()
         val delayL = maxDelaySamples * max(0f, sin(theta).toFloat())
         val delayR = maxDelaySamples * max(0f, -sin(theta).toFloat())
 
