@@ -103,6 +103,12 @@ import com.nikhil.yt.LocalDownloadUtil
 import com.nikhil.yt.LocalPlayerConnection
 import com.nikhil.yt.R
 import com.nikhil.yt.constants.ArtistSeparatorsKey
+import com.nikhil.yt.constants.EightDAudioClockwiseKey
+import com.nikhil.yt.constants.EightDAudioEnabledKey
+import com.nikhil.yt.constants.EightDAudioIntensityKey
+import com.nikhil.yt.constants.EightDAudioSmoothnessKey
+import com.nikhil.yt.constants.EightDAudioSpeedHzKey
+import com.nikhil.yt.constants.EightDAudioWidthKey
 import com.nikhil.yt.constants.EqualizerBandLevelsMbKey
 import com.nikhil.yt.constants.EqualizerBassBoostEnabledKey
 import com.nikhil.yt.constants.EqualizerBassBoostStrengthKey
@@ -116,6 +122,7 @@ import com.nikhil.yt.constants.EqualizerVirtualizerStrengthKey
 import com.nikhil.yt.constants.ListItemHeight
 import com.nikhil.yt.models.MediaMetadata
 import com.nikhil.yt.playback.EqCapabilities
+import com.nikhil.yt.playback.EightDAudioDefaults
 import com.nikhil.yt.playback.EqProfile
 import com.nikhil.yt.playback.EqProfilesPayload
 import com.nikhil.yt.playback.EqualizerJson
@@ -294,6 +301,16 @@ fun PlayerMenu(
 
     var showEqualizerDialog by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    var showEightDAudioDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (showEightDAudioDialog) {
+        EightDAudioDialog(
+            onDismiss = { showEightDAudioDialog = false },
+        )
     }
 
     if (showEqualizerDialog) {
@@ -662,6 +679,37 @@ fun PlayerMenu(
                         )
 
                         ListItem(
+                            headlineContent = { Text(text = stringResource(R.string.eight_d_audio)) },
+                            leadingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.eight_d_audio),
+                                    contentDescription = null,
+                                )
+                            },
+                            supportingContent = {
+                                val (eightDEnabled) = rememberPreference(
+                                    EightDAudioEnabledKey,
+                                    defaultValue = false,
+                                )
+                                Text(
+                                    text = stringResource(
+                                        if (eightDEnabled) R.string.eight_d_state_on
+                                        else R.string.eight_d_state_off,
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            modifier = Modifier.clickable { showEightDAudioDialog = true },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 56.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+
+                        ListItem(
                             headlineContent = { Text(text = stringResource(R.string.equalizer)) },
                             leadingContent = {
                                 Icon(
@@ -785,6 +833,196 @@ private fun VolumeSliderL(
             },
             colors = SliderDefaults.colors(),
         )
+}
+
+@Composable
+fun EightDAudioDialog(onDismiss: () -> Unit) {
+    val (enabled, setEnabled) = rememberPreference(
+        EightDAudioEnabledKey,
+        defaultValue = EightDAudioDefaults.ENABLED,
+    )
+    val (speedHz, setSpeedHz) = rememberPreference(
+        EightDAudioSpeedHzKey,
+        defaultValue = EightDAudioDefaults.SPEED_HZ,
+    )
+    val (intensity, setIntensity) = rememberPreference(
+        EightDAudioIntensityKey,
+        defaultValue = EightDAudioDefaults.INTENSITY,
+    )
+    val (width, setWidth) = rememberPreference(
+        EightDAudioWidthKey,
+        defaultValue = EightDAudioDefaults.WIDTH,
+    )
+    val (clockwise, setClockwise) = rememberPreference(
+        EightDAudioClockwiseKey,
+        defaultValue = EightDAudioDefaults.CLOCKWISE,
+    )
+    val (smoothness, setSmoothness) = rememberPreference(
+        EightDAudioSmoothnessKey,
+        defaultValue = EightDAudioDefaults.SMOOTHNESS,
+    )
+
+    val resetToDefaults = {
+        setEnabled(EightDAudioDefaults.ENABLED)
+        setSpeedHz(EightDAudioDefaults.SPEED_HZ)
+        setIntensity(EightDAudioDefaults.INTENSITY)
+        setWidth(EightDAudioDefaults.WIDTH)
+        setClockwise(EightDAudioDefaults.CLOCKWISE)
+        setSmoothness(EightDAudioDefaults.SMOOTHNESS)
+    }
+
+    AlertDialog(
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.eight_d_audio))
+        },
+        dismissButton = {
+            TextButton(onClick = resetToDefaults) {
+                Text(stringResource(R.string.reset))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.eight_d_audio),
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                    )
+
+                    Text(
+                        text = stringResource(R.string.eight_d_audio),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = setEnabled,
+                        colors = SwitchDefaults.colors(),
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                EightDAudioSliderRow(
+                    label = stringResource(R.string.eight_d_speed),
+                    valueText = stringResource(
+                        R.string.eight_d_seconds_per_turn,
+                        1f / speedHz.coerceAtLeast(EightDAudioDefaults.SPEED_MIN_HZ),
+                    ),
+                    value = speedHz,
+                    onValueChange = { setSpeedHz(it) },
+                    valueRange = EightDAudioDefaults.SPEED_MIN_HZ..EightDAudioDefaults.SPEED_MAX_HZ,
+                    enabled = enabled,
+                )
+
+                EightDAudioSliderRow(
+                    label = stringResource(R.string.eight_d_intensity),
+                    valueText = stringResource(R.string.eight_d_percent, (intensity * 100).toInt()),
+                    value = intensity,
+                    onValueChange = { setIntensity(it) },
+                    valueRange = 0f..1f,
+                    enabled = enabled,
+                )
+
+                EightDAudioSliderRow(
+                    label = stringResource(R.string.eight_d_width),
+                    valueText = stringResource(R.string.eight_d_percent, (width * 100).toInt()),
+                    value = width,
+                    onValueChange = { setWidth(it) },
+                    valueRange = 0f..1f,
+                    enabled = enabled,
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = stringResource(R.string.eight_d_direction),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    FilterChip(
+                        selected = clockwise,
+                        enabled = enabled,
+                        onClick = { setClockwise(true) },
+                        label = { Text(stringResource(R.string.eight_d_clockwise)) },
+                    )
+                    FilterChip(
+                        selected = !clockwise,
+                        enabled = enabled,
+                        onClick = { setClockwise(false) },
+                        label = { Text(stringResource(R.string.eight_d_counter_clockwise)) },
+                    )
+                }
+
+                EightDAudioSliderRow(
+                    label = stringResource(R.string.eight_d_smoothness),
+                    valueText = stringResource(R.string.eight_d_percent, (smoothness * 100).toInt()),
+                    value = smoothness,
+                    onValueChange = { setSmoothness(it) },
+                    valueRange = 0f..1f,
+                    enabled = enabled,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun EightDAudioSliderRow(
+    label: String,
+    valueText: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    enabled: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = valueText,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.End,
+            )
+        }
+        Slider(
+            value = value.coerceIn(valueRange.start, valueRange.endInclusive),
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(),
+        )
+    }
 }
 
 @Composable
