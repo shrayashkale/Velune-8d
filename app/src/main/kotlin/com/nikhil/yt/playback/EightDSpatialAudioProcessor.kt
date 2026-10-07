@@ -130,7 +130,9 @@ class EightDSpatialAudioProcessor : BaseAudioProcessor() {
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        if (!inputBuffer.hasRemaining() || bytesPerSample == 0) {
+        // Never clobber output the sink hasn't drained yet; it will call back
+        // with the same buffer after getOutput() is consumed.
+        if (hasPendingOutput() || !inputBuffer.hasRemaining() || bytesPerSample == 0) {
             return
         }
         val p = params // single volatile read for this buffer
